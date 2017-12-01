@@ -1,0 +1,33 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+CC	Makefile	/^CC = g++$/;"	m
+CFLAGS	Makefile	/^CFLAGS = -std=c++1y -O3 -g3 -Wall$/;"	m
+COMPAS_IOC_IMAGE	inference.cc	15;"	d	file:
+COMPAS_IOC_LOAD_WEIGHTS	inference.cc	14;"	d	file:
+COMPAS_IOC_MAGIC	inference.cc	13;"	d	file:
+CPPFLAGS	Makefile	/^CPPFLAGS =$/;"	m
+CXX	Makefile	/^CXX = $(CC)$/;"	m
+CXXFLAGS	Makefile	/^CXXFLAGS = $(CFLAGS)$/;"	m
+Concurrency	inference.cc	/^  static const int Concurrency = 4;$/;"	m	class:FPGA	file:
+DEVICE_NAME	inference.cc	12;"	d	file:
+EXT	Makefile	/^EXT = .cc$/;"	m
+FPGA	inference.cc	/^  explicit FPGA(Image weights) {$/;"	f	class:FPGA
+FPGA	inference.cc	/^class FPGA {$/;"	c	file:
+INCDIRS	Makefile	/^INCDIRS = ..\/tbb\/include$/;"	m
+Image	inference.cc	/^typedef char* Image;$/;"	t	file:
+LDFLAGS	Makefile	/^LDFLAGS = -Wl,-rpath,..\/tbb -L..\/tbb$/;"	m
+LIBDIRS	Makefile	/^LIBDIRS =$/;"	m
+LIBS	Makefile	/^LIBS = tbb$/;"	m
+PROGNAME	Makefile	/^PROGNAME = inference$/;"	m
+deps	Makefile	/^deps := $(addprefix .deps\/,$(sources:$(EXT)=.d))$/;"	m
+file	Makefile	/^file = $(patsubst .deps\/%.d,%,$@)$/;"	m
+fpga_fd	inference.cc	/^  int fpga_fd;$/;"	m	class:FPGA	file:
+main	inference.cc	/^int main(int argc, char* argv[]) {$/;"	f
+numberOfOperations	inference.cc	/^static std::atomic_int numberOfOperations;$/;"	v	file:
+objects	Makefile	/^objects := $(sources:$(EXT)=.o)$/;"	m
+operator ()	inference.cc	/^  void operator()(const Image& in, const T& gw) {$/;"	f	class:FPGA
+sources	Makefile	/^sources := $(subst .\/,,$(shell find . -name \\*$(EXT)))$/;"	m

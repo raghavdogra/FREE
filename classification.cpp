@@ -1,0 +1,140 @@
+#include "classification.hpp"
+
+#include <iosfwd>
+#include <vector>
+
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
+
+#include <tbb/flow_graph.h>
+#include <linux/ioctl.h>
+#include <sys/time.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <fstream>
+#include <iostream>
+#include <atomic>
+
+#define DEVICE_NAME "/dev/compas_fpga"
+#define COMPAS_IOC_MAGIC 0xFF
+#define COMPAS_IOC_LOAD_WEIGHTS _IOW(COMPAS_IOC_MAGIC, 0, int)
+#define COMPAS_IOC_IMAGE        _IOW(COMPAS_IOC_MAGIC, 1, int)
+
+using namespace cv;
+typedef char* Image;
+static std::atomic_int numberOfOperations;
+
+class FPGA {
+  int fpga_fd;
+
+ public:
+  static const int Concurrency = 4;
+  explicit FPGA(Image weights) {
+    fpga_fd = open(DEVICE_NAME, O_RDWR);
+        std::cout << __func__ << __LINE__ <<std::endl;
+    struct Cmd_LOAD_WEIGHTS {
+      char* weights;
+      explicit Cmd_LOAD_WEIGHTS(Image weights):weights(weights) { }
+    } cmd(weights);
+    ioctl(fpga_fd, COMPAS_IOC_LOAD_WEIGHTS, &cmd);
+  }
+//  template<class T>
+  char operator()(const char * in) {
+        std::cout << __func__ << __LINE__ <<std::endl;
+    struct Cmd_IMAGE {
+      const char* img;
+      char* result;
+
+      explicit Cmd_IMAGE(const char * img):img(img), result(new char[256*1024]) { }
+      ~Cmd_IMAGE() { delete[] result; }
+    } cmd(in);
+
+    struct timeval t1, t2;
+    double elapsedTime;
+
+    gettimeofday(&t1, NULL);
+    ioctl(fpga_fd, COMPAS_IOC_IMAGE, &cmd);
+    char * curr = cmd.result;
+    for(int i = 0;i<(256*1024);i++) {
+        if(*curr!=0)
+	    break;
+    }
+//    std::cout << curr[0] <<"\n";
+    gettimeofday(&t2, NULL);
+    elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;
+    elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;
+    //std::cout << elapsedTime << std::endl;
+    numberOfOperations++;
+    return *curr;
+    delete[] in;
+  }
+};
+
+
+
+#include "common.h"
+
+using std::string;
+
+
+
+
+struct classifier_ctx
+{
+  FPGA worker;
+};
+
+/* Currently, 2 execution contexts are created per GPU. In other words, 2
+ * inference tasks can execute in parallel on the same GPU. This helps improve
+ * GPU utilization since some kernel operations of inference will not fully use
+ * the GPU. */
+classifier_ctx *ctx;
+classifier_ctx* classifier_initialize()
+{
+  std::cout << "init function called\n";
+  std::ifstream weights_file("weights.file");
+  std::ifstream image_file("images.file");
+  Image weights = new char[256*1024];
+  weights_file.read(weights, 256*1024);
+  FPGA worker(weights);
+  ctx = new classifier_ctx{std::move(worker)};
+         char * out = new char[256*1024];
+        image_file.read(out, 8*1024);
+  std::cout << ctx <<" init ctx\n";
+  ctx->worker(out);
+  delete[] weights;
+
+  return ctx;
+}
+const char * r ="hello";
+const char* classifier_classify(
+                                char* buffer, size_t length)
+{
+        _InputArray array(buffer, length);
+
+        Mat img = imdecode(array, -1);
+        if (img.empty())
+            throw std::invalid_argument("could not decode image");
+
+	char * out = new char[length];
+	memcpy(out,img.data,length);
+//	std::ifstream image_file("images.file");
+//	char * out = new char[256*1024];
+//	image_file.read(out, 8*1024);
+ // std::ifstream weights_file("weights.file");
+ // Image weights = new char[256*1024];
+ // weights_file.read(weights, 256*1024);
+ // FPGA worker(weights);
+//	worker(out);
+	//FPGA worker();	
+	std::cout << ctx <<" class ctx\n";
+	 ctx->worker(out);
+//	std::cout<<a << " a\n";
+        return r;
+}
+
+void classifier_destroy(classifier_ctx* ctx)
+{
+    delete ctx;
+}

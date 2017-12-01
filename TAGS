@@ -1,0 +1,13 @@
+
+inference.cc,493
+#define DEVICE_NAME DEVICE_NAME8,135
+#define COMPAS_IOC_MAGIC COMPAS_IOC_MAGIC9,174
+#define COMPAS_IOC_LOAD_WEIGHTS COMPAS_IOC_LOAD_WEIGHTS10,204
+#define COMPAS_IOC_IMAGE COMPAS_IOC_IMAGE11,267
+typedef char* Image;Image15,353
+class FPGA {FPGA17,375
+  int fpga_fd;fpga_fd18,388
+  static const int Concurrency = 3;Concurrency20,411
+  FPGA(Image weights) {FPGA21,447
+  void operator()(const Image& in, T& gw) {operator ()31,714
+int main(int argc, char* argv[]) {main44,1001
