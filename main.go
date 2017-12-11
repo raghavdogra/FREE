@@ -19,9 +19,12 @@ var ctx *C.classifier_ctx
 var requestCount uint8
 var bigbuffer [] byte
 var w1,w2 http.ResponseWriter
-
+var mux map[string]func(http.ResponseWriter, *http.Request)
 
 func modclass(w http.ResponseWriter, r *http.Request) {
+        if (requestCount == 3) {
+		requestCount  = 0
+	}
 	requestCount = requestCount + 1
 	log.Println ("req count is ")
 	log.Println (requestCount)
@@ -34,6 +37,12 @@ func modclass(w http.ResponseWriter, r *http.Request) {
 	if requestCount == 1 {
 		w1 = w
 		bigbuffer = append(bigbuffer,buffer...)
+		for requestCount == 1 {
+
+		}
+		for requestCount == 2 {
+
+                }
 	}
 	if requestCount == 2 {
 		w2 = w
@@ -41,11 +50,23 @@ func modclass(w http.ResponseWriter, r *http.Request) {
 		log.Println("Count is two")
 		io.WriteString(w1, "thread1response")
 		io.WriteString(w2, "thread2response")
-		requestCount = 0
+		requestCount = 3
 		bigbuffer = nil
 	}
 
 }
+
+type myHandler struct{}
+
+func (*myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if h, ok := mux[r.URL.String()]; ok {
+		h(w, r)
+		return
+	}
+
+	io.WriteString(w, "My server: "+r.URL.String())
+}
+
 /*
 func classify(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
@@ -73,22 +94,28 @@ func main() {
 //	log.Println(os.Args[2])
 //	log.Println(os.Args[3])
 //	log.Println(os.Args[4])
-	srv := &http.Server{
-		ReadTimeout: 5 * time.Second,
-		WriteTimeout: 100 * time.Second,
+	srv := http.Server{
+		Addr:    ":8000",
+		ReadTimeout: 50000 * time.Second,
+		WriteTimeout: 10000 * time.Second,
+		Handler: &myHandler{},
 	}
+	mux = make(map[string]func(http.ResponseWriter, *http.Request))
+	mux["/api/classify"] = modclass
+
 	log.Println("Initializing Caffe classifiers")
-	ctx, err := C.classifier_initialize()
+/*	ctx, err := C.classifier_initialize()
         if err != nil {
                 log.Fatalln("could not initialize classifier:", err)
                 return
-        }
+        }*/
 	bigbuffer = nil
 	requestCount = 0
-	log.Println((ctx))
+//	log.Println((ctx))
 //	defer C.classifier_destroy(ctx)
 	log.Println("Adding REST endpoint /api/classify")
-	http.HandleFunc("/api/classify", modclass)
 	log.Println("Starting server listening on :8000")
 	log.Fatal(srv.ListenAndServe())
  }
+
+
