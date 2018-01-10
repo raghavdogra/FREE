@@ -5,7 +5,7 @@ package main
 // #include <stdlib.h>
 // #include "classification.hpp"
 import "C"
-//import "unsafe"
+import "unsafe"
 
 import (
 	"time"
@@ -15,12 +15,13 @@ import (
 	"net/http"
 )
 
+var cstr *C.char
 var ctx *C.classifier_ctx
 var requestCount uint8
 var bigbuffer [] byte
 var w1,w2 http.ResponseWriter
 var mux map[string]func(http.ResponseWriter, *http.Request)
-
+var responseReady bool
 func modclass(w http.ResponseWriter, r *http.Request) {
         if (requestCount == 3) {
 		requestCount  = 0
@@ -35,24 +36,26 @@ func modclass(w http.ResponseWriter, r *http.Request) {
         }
 
 	if requestCount == 1 {
+                responseReady = false
 		w1 = w
 		bigbuffer = append(bigbuffer,buffer...)
 		for requestCount == 1 {
 
 		}
-		for requestCount == 2 {
-
-                }
-	}
-	if requestCount == 2 {
+	       cstr, err = C.classifier_classify( (*C.char)(unsafe.Pointer(&buffer[0])), C.size_t(len(buffer)))	
+               responseReady = true
+               io.WriteString(w1, C.GoString(cstr))
+	} else if requestCount == 2 {
 		w2 = w
 		bigbuffer = append(bigbuffer,buffer...)
 		log.Println("Count is two")
-		io.WriteString(w1, "thread1response")
-		io.WriteString(w2, "thread2response")
+                for responseReady==false {
+
+                }
+		io.WriteString(w2,C.GoString(cstr))
 		requestCount = 3
 		bigbuffer = nil
-	}
+	} else {}
 
 }
 
