@@ -107,15 +107,15 @@ func main() {
 	mux["/api/classify"] = modclass
 
 	log.Println("Initializing Caffe classifiers")
-/*	ctx, err := C.classifier_initialize()
+	ctx, err := C.classifier_initialize()
         if err != nil {
                 log.Fatalln("could not initialize classifier:", err)
                 return
-        }*/
+        }
 	bigbuffer = nil
 	requestCount = 0
 //	log.Println((ctx))
-//	defer C.classifier_destroy(ctx)
+	defer C.classifier_destroy(ctx)
 	log.Println("Adding REST endpoint /api/classify")
 	log.Println("Starting server listening on :8000")
 	log.Fatal(srv.ListenAndServe())
