@@ -14,47 +14,48 @@ import (
 	"log"
 	"net/http"
 )
-
+var n uint8
 var cstr *C.char
 var ctx *C.classifier_ctx
 var requestCount uint8
 var bigbuffer [] byte
-var w1,w2 http.ResponseWriter
+var w1 http.ResponseWriter
+var w2 [10]http.ResponseWriter
 var mux map[string]func(http.ResponseWriter, *http.Request)
 var responseReady bool
 func modclass(w http.ResponseWriter, r *http.Request) {
-        if (requestCount == 3) {
+        if (requestCount == n+1) {
 		requestCount  = 0
 	}
-	requestCount = requestCount + 1
-	log.Println ("req count is ")
-	log.Println (requestCount)
 	buffer, err := ioutil.ReadAll(r.Body)
         if err != nil {
                 http.Error(w, err.Error(), http.StatusBadRequest)
         return
         }
+	bigbuffer = append(bigbuffer,buffer...)
+	requestCount = requestCount + 1
+	log.Println ("req count is ")
+	log.Println (requestCount)
 
 	if requestCount == 1 {
                 responseReady = false
-		w1 = w
-		bigbuffer = append(bigbuffer,buffer...)
-		for requestCount == 1 {
+	//	w1 = w
+		for requestCount < n {
 
 		}
 	       cstr, err = C.classifier_classify( (*C.char)(unsafe.Pointer(&buffer[0])), C.size_t(len(buffer)))	
                responseReady = true
-               io.WriteString(w1, C.GoString(cstr))
-	} else if requestCount == 2 {
-		w2 = w
-		bigbuffer = append(bigbuffer,buffer...)
+               io.WriteString(w, C.GoString(cstr))
+	} else if requestCount <= n {
+	//	w2 = w
 		log.Println("Count is two")
                 for responseReady==false {
 
                 }
-		io.WriteString(w2,C.GoString(cstr))
-		requestCount = 3
-		bigbuffer = nil
+		io.WriteString(w,C.GoString(cstr))
+		if requestCount==n{
+		requestCount = n + 1
+		bigbuffer = nil}
 	} else {}
 
 }
@@ -114,6 +115,7 @@ func main() {
         }
 	bigbuffer = nil
 	requestCount = 0
+	n = 3
 //	log.Println((ctx))
 	defer C.classifier_destroy(ctx)
 	log.Println("Adding REST endpoint /api/classify")
