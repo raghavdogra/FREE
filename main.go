@@ -13,19 +13,21 @@ import (
         "io/ioutil"
 	"log"
 	"net/http"
+	"sync/atomic"
 )
-var n uint8
+var n uint32
 var cstr *C.char
 var ctx *C.classifier_ctx
-var requestCount uint8
+var requestCount uint32
 var bigbuffer [] byte
 var w1 http.ResponseWriter
 var w2 [10]http.ResponseWriter
 var mux map[string]func(http.ResponseWriter, *http.Request)
 var responseReady bool
 func modclass(w http.ResponseWriter, r *http.Request) {
-        if (requestCount == n+1) {
-		requestCount  = 0
+        if (atomic.LoadUint32(&requestCount) == n+1) {
+		//requestCount  = 0
+		atomic.StoreUint32(&requestCount,0)
 	}
 	buffer, err := ioutil.ReadAll(r.Body)
         if err != nil {
@@ -33,28 +35,33 @@ func modclass(w http.ResponseWriter, r *http.Request) {
         return
         }
 	bigbuffer = append(bigbuffer,buffer...)
-	requestCount = requestCount + 1
-	log.Println ("req count is ")
-	log.Println (requestCount)
+	//requestCount = requestCount + 1
+	atomic.AddUint32(&requestCount,1)
+//	log.Println ("req count is ")
+//	log.Println (requestCount)
 
-	if requestCount == 1 {
+//	if requestCount == 1 {
+	if atomic.LoadUint32(&requestCount) == 1 {
                 responseReady = false
 	//	w1 = w
-		for requestCount < n {
+		//for requestCount < n {
+		for atomic.LoadUint32(&requestCount) < n {
 
 		}
 	       cstr, err = C.classifier_classify( (*C.char)(unsafe.Pointer(&buffer[0])), C.size_t(len(buffer)))	
                responseReady = true
                io.WriteString(w, C.GoString(cstr))
-	} else if requestCount <= n {
+	} else if atomic.LoadUint32(&requestCount) <= n {
 	//	w2 = w
 		log.Println("Count is two")
                 for responseReady==false {
 
                 }
 		io.WriteString(w,C.GoString(cstr))
-		if requestCount==n{
-		requestCount = n + 1
+		//if requestCount==n{
+		if atomic.LoadUint32(&requestCount)==n{
+		//requestCount = n + 1
+		atomic.AddUint32(&requestCount,1)
 		bigbuffer = nil}
 	} else {}
 
