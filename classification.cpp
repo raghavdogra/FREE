@@ -32,7 +32,6 @@ class FPGA {
   static const int Concurrency = 4;
   explicit FPGA(Image weights) {
     fpga_fd = open(DEVICE_NAME, O_RDWR);
-        std::cout << __func__ << __LINE__ <<std::endl;
     struct Cmd_LOAD_WEIGHTS {
       char* weights;
       explicit Cmd_LOAD_WEIGHTS(Image weights):weights(weights) { }
@@ -41,7 +40,7 @@ class FPGA {
   }
 //  template<class T>
   char operator()(const char * in) {
-        std::cout << __func__ << __LINE__ <<std::endl;
+std::cout << __func__ << __LINE__ <<std::endl;
     struct Cmd_IMAGE {
       const char* img;
       char* result;
@@ -101,7 +100,6 @@ classifier_ctx* classifier_initialize()
   ctx = new classifier_ctx{std::move(worker)};
          char * out = new char[256*1024];
         image_file.read(out, 8*1024);
-  std::cout << ctx <<" init ctx\n";
   ctx->worker(out);
   delete[] weights;
 
@@ -128,7 +126,6 @@ const char* classifier_classify(
  // FPGA worker(weights);
 //	worker(out);
 	//FPGA worker();	
-	std::cout << ctx <<" class ctx\n";
 	 ctx->worker(out);
 //	std::cout<<a << " a\n";
         return r;

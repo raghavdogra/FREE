@@ -18,14 +18,20 @@ import (
 var n uint32
 var cstr *C.char
 var ctx *C.classifier_ctx
+/*
+type SafeCounter struct {
+	requestCount uint32
+	mux sync.Mutex
+}*/
 var requestCount uint32
 var bigbuffer [] byte
 var w1 http.ResponseWriter
 var w2 [10]http.ResponseWriter
 var mux map[string]func(http.ResponseWriter, *http.Request)
 var responseReady bool
+
 func modclass(w http.ResponseWriter, r *http.Request) {
-        if (atomic.LoadUint32(&requestCount) == n+1) {
+        if (atomic.LoadUint32(&requestCount) > n) {
 		//requestCount  = 0
 		atomic.StoreUint32(&requestCount,0)
 	}
@@ -38,14 +44,14 @@ func modclass(w http.ResponseWriter, r *http.Request) {
 	//requestCount = requestCount + 1
 	atomic.AddUint32(&requestCount,1)
 //	log.Println ("req count is ")
-//	log.Println (requestCount)
+	log.Println (requestCount)
 
 //	if requestCount == 1 {
 	if atomic.LoadUint32(&requestCount) == 1 {
                 responseReady = false
 	//	w1 = w
 		//for requestCount < n {
-		for atomic.LoadUint32(&requestCount) < n {
+		for requestCount < n {
 
 		}
 	       cstr, err = C.classifier_classify( (*C.char)(unsafe.Pointer(&buffer[0])), C.size_t(len(buffer)))	
@@ -53,7 +59,6 @@ func modclass(w http.ResponseWriter, r *http.Request) {
                io.WriteString(w, C.GoString(cstr))
 	} else if atomic.LoadUint32(&requestCount) <= n {
 	//	w2 = w
-		log.Println("Count is two")
                 for responseReady==false {
 
                 }
@@ -76,6 +81,46 @@ func (*myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	io.WriteString(w, "My server: "+r.URL.String())
+}
+//var c chan struct{*http.Request;chan string}
+
+type job struct {
+	ch chan string
+	buf []byte 
+}
+var c chan job
+func mainloop() {
+	c= make(chan job,2)
+	for true {
+		r1:=<-c
+		r2:=<-c
+		c1 := r1.ch
+		c2 := r2.ch
+		go processbatch(r1.buf,r2.buf, c1, c2)
+
+	}
+}
+
+func processbatch(buf1 []byte ,buf2 []byte , c1 chan string, c2 chan string ) {
+	cstr, err := C.classifier_classify( (*C.char)(unsafe.Pointer(&buf1[0])), C.size_t(len(buf1)))
+	if err != nil {
+                cstr = C.CString("error")
+        }
+
+	c1<- C.GoString(cstr)
+	c2<- C.GoString(cstr)
+}
+
+func modclass1(w http.ResponseWriter, r *http.Request) {
+        buffer, err := ioutil.ReadAll(r.Body)
+        if err != nil {
+                http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+        }
+	ch := make(chan string)
+	c<-job{ch,buffer}
+	gostr := <-ch
+	io.WriteString(w, gostr )
 }
 
 /*
@@ -112,7 +157,7 @@ func main() {
 		Handler: &myHandler{},
 	}
 	mux = make(map[string]func(http.ResponseWriter, *http.Request))
-	mux["/api/classify"] = modclass
+	mux["/api/classify"] = modclass1
 
 	log.Println("Initializing Caffe classifiers")
 	ctx, err := C.classifier_initialize()
@@ -124,6 +169,7 @@ func main() {
 	requestCount = 0
 	n = 3
 //	log.Println((ctx))
+	go mainloop()
 	defer C.classifier_destroy(ctx)
 	log.Println("Adding REST endpoint /api/classify")
 	log.Println("Starting server listening on :8000")
