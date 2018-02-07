@@ -90,25 +90,36 @@ type job struct {
 }
 var c chan job
 func mainloop() {
-	c= make(chan job,2)
+        n:=2
+	j:=0
+	c= make(chan job,n)
+        //var jobs [n]job
+	jobs:= make([]job,n)
+	i:=0
 	for true {
-		r1:=<-c
-		r2:=<-c
-		c1 := r1.ch
-		c2 := r2.ch
-		go processbatch(r1.buf,r2.buf, c1, c2)
+                for i=0;i<n;i++{
+			log.Println(i)
+			jobs[i] = <-c
+			j = j+1
+			log.Println(j)
+		}
+	//	c1 := r1.ch
+	//	c2 := r2.ch
+		go processbatch(jobs,i)
 
 	}
 }
 
-func processbatch(buf1 []byte ,buf2 []byte , c1 chan string, c2 chan string ) {
+func processbatch(jobs []job, count int ) {
+	buf1 := jobs[0].buf
 	cstr, err := C.classifier_classify( (*C.char)(unsafe.Pointer(&buf1[0])), C.size_t(len(buf1)))
 	if err != nil {
                 cstr = C.CString("error")
         }
-
-	c1<- C.GoString(cstr)
-	c2<- C.GoString(cstr)
+	i:=0
+        for i=0;i<count;i++ {
+		jobs[i].ch <- C.GoString(cstr)
+	}
 }
 
 func modclass1(w http.ResponseWriter, r *http.Request) {
@@ -151,7 +162,7 @@ func main() {
 //	log.Println(os.Args[3])
 //	log.Println(os.Args[4])
 	srv := http.Server{
-		Addr:    ":8000",
+		Addr:    ":8002",
 		ReadTimeout: 50000 * time.Second,
 		WriteTimeout: 10000 * time.Second,
 		Handler: &myHandler{},
