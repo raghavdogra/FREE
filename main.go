@@ -98,7 +98,6 @@ func mainloop() {
 	i:=0
 	for true {
                 for i=0;i<n;i++{
-			log.Println(i)
 			jobs[i] = <-c
 			j = j+1
 			log.Println(j)
@@ -162,9 +161,9 @@ func main() {
 //	log.Println(os.Args[3])
 //	log.Println(os.Args[4])
 	srv := http.Server{
-		Addr:    ":8002",
-		ReadTimeout: 50000 * time.Second,
-		WriteTimeout: 10000 * time.Second,
+		Addr:    ":8000",
+		ReadTimeout: 2 * time.Second,
+		WriteTimeout: 2 * time.Second,
 		Handler: &myHandler{},
 	}
 	mux = make(map[string]func(http.ResponseWriter, *http.Request))

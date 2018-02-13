@@ -40,7 +40,6 @@ class FPGA {
   }
 //  template<class T>
   char operator()(const char * in) {
-std::cout << __func__ << __LINE__ <<std::endl;
     struct Cmd_IMAGE {
       const char* img;
       char* result;
@@ -64,6 +63,7 @@ std::cout << __func__ << __LINE__ <<std::endl;
     elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;
     elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;
     //std::cout << elapsedTime << std::endl;
+std::cout << __func__ << __LINE__ <<std::endl;
     numberOfOperations++;
     return *curr;
     delete[] in;
