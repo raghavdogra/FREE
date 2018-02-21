@@ -91,7 +91,7 @@ type job struct {
 var c chan job
 var gpu_channel chan job
 func mainloop() {
-        n:=1
+        n:=10
 	j:=0
 	c= make(chan job,n)
         //var jobs [n]job
@@ -136,7 +136,7 @@ func processbatch(jobs []job, count int ) {
         for i=0;i<count;i++ {
 	log.Print("trying to send back")
 		//jobs[i].ch <- C.GoString(cstr)
-		jobs[0].ch <- cstr
+		jobs[i].ch <- cstr
 	log.Print("value sent back to chan")
 	}
 }
