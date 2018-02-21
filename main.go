@@ -124,20 +124,20 @@ func processbatch(jobs []job, count int ) {
 	buf1 := jobs[0].buf
 //	cstr, err := C.classifier_classify( (*C.char)(unsafe.Pointer(&buf1[0])), C.size_t(len(buf1)))
 	res_chan := make (chan string)
-	log.Print("sending to gpu and count is ", count)
+//	log.Print("sending to gpu and count is ", count)
 	gpu_channel <- job{res_chan,buf1}
-	log.Print("waiting to recieve from res_chan")
+//	log.Print("waiting to recieve from res_chan")
 	cstr := <-res_chan
-	log.Print("recieved from res_chan")
+//	log.Print("recieved from res_chan")
 //	if err != nil {
 //                cstr = C.CString("error")
 //        }
 	i:=0
         for i=0;i<count;i++ {
-	log.Print("trying to send back")
+//	log.Print("trying to send back")
 		//jobs[i].ch <- C.GoString(cstr)
 		jobs[i].ch <- cstr
-	log.Print("value sent back to chan")
+//	log.Print("value sent back to chan")
 	}
 }
 
@@ -150,7 +150,7 @@ func modclass1(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan string)
 	c<-job{ch,buffer}
 	gostr := <-ch
-	log.Println("I'm done!")
+//	log.Println("I'm done!")
 	io.WriteString(w, gostr )
 }
 
@@ -182,7 +182,7 @@ func main() {
 //	log.Println(os.Args[3])
 //	log.Println(os.Args[4])
 	srv := http.Server{
-		Addr:    ":8000",
+		Addr:    ":8001",
 		ReadTimeout: 10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		Handler: &myHandler{},
