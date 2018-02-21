@@ -89,14 +89,15 @@ type job struct {
 	buf []byte 
 }
 var c chan job
+var gpu_channel chan job
 func mainloop() {
-        n:=2
+        n:=1
 	j:=0
 	c= make(chan job,n)
         //var jobs [n]job
-	jobs:= make([]job,n)
 	i:=0
 	for true {
+		jobs:= make([]job,n)
                 for i=0;i<n;i++{
 			jobs[i] = <-c
 			j = j+1
@@ -108,16 +109,35 @@ func mainloop() {
 
 	}
 }
-
+func dummygpu() {
+	gpu_channel = make(chan job)
+	job_num := 0
+	for true {
+		currjob := <-gpu_channel
+		job_num = job_num + 1
+		log.Print("gpu request# ",job_num)
+		time.Sleep(3 * time.Millisecond)
+		currjob.ch <- "Rat"
+	}
+}
 func processbatch(jobs []job, count int ) {
 	buf1 := jobs[0].buf
-	cstr, err := C.classifier_classify( (*C.char)(unsafe.Pointer(&buf1[0])), C.size_t(len(buf1)))
-	if err != nil {
-                cstr = C.CString("error")
-        }
+//	cstr, err := C.classifier_classify( (*C.char)(unsafe.Pointer(&buf1[0])), C.size_t(len(buf1)))
+	res_chan := make (chan string)
+	log.Print("sending to gpu and count is ", count)
+	gpu_channel <- job{res_chan,buf1}
+	log.Print("waiting to recieve from res_chan")
+	cstr := <-res_chan
+	log.Print("recieved from res_chan")
+//	if err != nil {
+//                cstr = C.CString("error")
+//        }
 	i:=0
         for i=0;i<count;i++ {
-		jobs[i].ch <- C.GoString(cstr)
+	log.Print("trying to send back")
+		//jobs[i].ch <- C.GoString(cstr)
+		jobs[0].ch <- cstr
+	log.Print("value sent back to chan")
 	}
 }
 
@@ -130,6 +150,7 @@ func modclass1(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan string)
 	c<-job{ch,buffer}
 	gostr := <-ch
+	log.Println("I'm done!")
 	io.WriteString(w, gostr )
 }
 
@@ -162,28 +183,28 @@ func main() {
 //	log.Println(os.Args[4])
 	srv := http.Server{
 		Addr:    ":8000",
-		ReadTimeout: 2 * time.Second,
-		WriteTimeout: 2 * time.Second,
+		ReadTimeout: 10 * time.Second,
+		WriteTimeout: 10 * time.Second,
 		Handler: &myHandler{},
 	}
 	mux = make(map[string]func(http.ResponseWriter, *http.Request))
 	mux["/api/classify"] = modclass1
 
 	log.Println("Initializing Caffe classifiers")
-	ctx, err := C.classifier_initialize()
-        if err != nil {
-                log.Fatalln("could not initialize classifier:", err)
-                return
-        }
+//	ctx, err := C.classifier_initialize()
+//        if err != nil {
+//                log.Fatalln("could not initialize classifier:", err)
+//                return
+//        }
 	bigbuffer = nil
 	requestCount = 0
-	n = 3
+	n = 1
 //	log.Println((ctx))
 	go mainloop()
+	go dummygpu()
 	defer C.classifier_destroy(ctx)
 	log.Println("Adding REST endpoint /api/classify")
 	log.Println("Starting server listening on :8000")
 	log.Fatal(srv.ListenAndServe())
  }
-
 
