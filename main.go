@@ -12,8 +12,10 @@ import (
         "io"
         "io/ioutil"
 	"log"
+	"os"
 	"net/http"
 	"sync/atomic"
+	"strconv"
 )
 var n uint32
 var cstr *C.char
@@ -91,7 +93,10 @@ type job struct {
 var c chan job
 var gpu_channel chan job
 func mainloop() {
-        n:=10
+        n,err:=strconv.Atoi(os.Args[1]) //the app will take the first arguement as the batch size
+	if err!=nil {
+		log.Print("error")
+	}
 	j:=0
 	c= make(chan job,n)
         //var jobs [n]job
@@ -110,7 +115,7 @@ func mainloop() {
 	}
 }
 func dummygpu() {
-	gpu_channel = make(chan job)
+	gpu_channel = make(chan job, 4)
 	job_num := 0
 	for true {
 		currjob := <-gpu_channel
@@ -124,11 +129,11 @@ func processbatch(jobs []job, count int ) {
 	buf1 := jobs[0].buf
 //	cstr, err := C.classifier_classify( (*C.char)(unsafe.Pointer(&buf1[0])), C.size_t(len(buf1)))
 	res_chan := make (chan string)
-//	log.Print("sending to gpu and count is ", count)
+	log.Print("sending to gpu and count is ", count)
 	gpu_channel <- job{res_chan,buf1}
-//	log.Print("waiting to recieve from res_chan")
+	log.Print("waiting to recieve from res_chan")
 	cstr := <-res_chan
-//	log.Print("recieved from res_chan")
+	log.Print("recieved from res_chan")
 //	if err != nil {
 //                cstr = C.CString("error")
 //        }
@@ -183,8 +188,8 @@ func main() {
 //	log.Println(os.Args[4])
 	srv := http.Server{
 		Addr:    ":8001",
-		ReadTimeout: 10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		ReadTimeout: 100 * time.Second,
+		WriteTimeout: 100 * time.Second,
 		Handler: &myHandler{},
 	}
 	mux = make(map[string]func(http.ResponseWriter, *http.Request))
