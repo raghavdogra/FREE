@@ -114,15 +114,21 @@ func mainloop() {
 
 	}
 }
+func stage2(j job){
+	time.Sleep(9*time.Millisecond)
+	j.ch <-"Rat"
+}
 func dummygpu() {
 	gpu_channel = make(chan job, 4)
 	job_num := 0
 	for true {
-		currjob := <-gpu_channel
-		job_num = job_num + 1
-		log.Print("gpu request# ",job_num)
-		time.Sleep(3 * time.Millisecond)
-		currjob.ch <- "Rat"
+
+			currjob := <-gpu_channel
+			job_num = job_num + 1
+			log.Print("gpu request# ",job_num)
+			time.Sleep(3 * time.Millisecond)
+			go stage2(currjob)
+		//currjob.ch <- "Rat"
 	}
 }
 func processbatch(jobs []job, count int ) {
