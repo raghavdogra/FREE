@@ -103,15 +103,22 @@ func mainloop() {
 	i:=0
 	for true {
 		jobs:= make([]job,n)
+		tick := time.Tick(3 * time.Millisecond)
                 for i=0;i<n;i++{
-			jobs[i] = <-c
-			j = j+1
-			log.Println(j)
+			select {
+			case	jobs[i] = <-c:
+				j = j+1
+				log.Println(j)
+				continue
+			case <- tick:
+			}
+			break
 		}
-	//	c1 := r1.ch
-	//	c2 := r2.ch
+		if i!=0 {
+			log.Println(i)
+			log.Println("I is")
 		go processbatch(jobs,i)
-
+		}
 	}
 }
 func stage2(j job){
