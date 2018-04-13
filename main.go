@@ -133,21 +133,21 @@ func dummygpu() {
 }
 func processbatch(jobs []job, count int ) {
 	buf1 := jobs[0].buf
-//	cstr, err := C.classifier_classify( (*C.char)(unsafe.Pointer(&buf1[0])), C.size_t(len(buf1)))
-	res_chan := make (chan string)
-	log.Print("sending to gpu and count is ", count)
-	gpu_channel <- job{res_chan,buf1}
-	log.Print("waiting to recieve from res_chan")
-	cstr := <-res_chan
-	log.Print("recieved from res_chan")
-//	if err != nil {
-//                cstr = C.CString("error")
-//        }
+	cstr, err := C.classifier_classify( (*C.char)(unsafe.Pointer(&buf1[0])), C.size_t(len(buf1)))
+//	res_chan := make (chan string)
+//	log.Print("sending to gpu and count is ", count)
+//	gpu_channel <- job{res_chan,buf1}
+//	log.Print("waiting to recieve from res_chan")
+//	cstr := <-res_chan
+//	log.Print("recieved from res_chan")
+	if err != nil {
+                cstr = C.CString("error")
+        }
 	i:=0
         for i=0;i<count;i++ {
 //	log.Print("trying to send back")
 		//jobs[i].ch <- C.GoString(cstr)
-		jobs[i].ch <- cstr
+		jobs[i].ch <- C.GoString(cstr)
 //	log.Print("value sent back to chan")
 	}
 }
@@ -202,17 +202,17 @@ func main() {
 	mux["/api/classify"] = modclass1
 
 	log.Println("Initializing Caffe classifiers")
-//	ctx, err := C.classifier_initialize()
-//        if err != nil {
-//                log.Fatalln("could not initialize classifier:", err)
-//                return
-//        }
+	ctx, err := C.classifier_initialize()
+        if err != nil {
+                log.Fatalln("could not initialize classifier:", err)
+                return
+        }
 	bigbuffer = nil
 	requestCount = 0
 	n = 1
 //	log.Println((ctx))
 	go mainloop()
-	go dummygpu()
+//	go dummygpu()
 	defer C.classifier_destroy(ctx)
 	log.Println("Adding REST endpoint /api/classify")
 	log.Println("Starting server listening on :8000")
