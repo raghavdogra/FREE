@@ -58,7 +58,7 @@ func mainloop() {
         //var jobs [n]job
 	i:=0
 	for  {
-		tick := time.Tick(5000 * time.Millisecond)
+		tick := time.Tick(50 * time.Millisecond)
 		jobs:= [10]job{}
                 for i=0;i<n;i++{
 			select {
@@ -67,7 +67,6 @@ func mainloop() {
 				log.Println(j)
 				continue
 			case <- tick:
-				log.Println("tick exploded!")
 			}
 			break
 		}
