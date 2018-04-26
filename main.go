@@ -53,12 +53,16 @@ func mainloop() {
 	if err!=nil {
 		log.Print("error")
 	}
+        t,er1:=strconv.Atoi(os.Args[2]) //the app will take the first arguement as the batch size
+	if er1!=nil {
+		log.Print("error")
+	}
 	j:=0
 	c= make(chan job)
         //var jobs [n]job
 	i:=0
 	for  {
-		tick := time.Tick(50 * time.Millisecond)
+		tick := time.Tick(time.Duration(t) * time.Millisecond)
 		jobs:= [10]job{}
                 for i=0;i<n;i++{
 			select {
@@ -67,6 +71,11 @@ func mainloop() {
 				log.Println(j)
 				continue
 			case <- tick:
+				if i==0 {
+//				log.Println("tick exploded")
+				i = -1
+				continue
+				}
 			}
 			break
 		}
