@@ -73,25 +73,25 @@ func mainloop() {
         //var jobs [n]job
 	i:=0
 	for  {
-		tick := time.Tick(time.Duration(t) * time.Millisecond)
 		jobs:= [8]job{}
-                for i=0;i<n;i++{
+		jobs[0] = <-c
+                for i=1;i<n;i++{
+			tick := time.After(time.Duration(t) * time.Millisecond)
 			select {
 			case	jobs[i] = <-c:
 				j = j+1
-				log.Println(j)
+				log.Println("what the fuck!")
+				log.Println(time.Now())		
 				continue
 			case <- tick:
-				if i==0 {
-//				log.Println("tick exploded")
-				i = -1
-				continue
-				}
+				log.Println("Tick!")		
+				log.Println(time.Now())		
 			}
 			break
 		}
 		if i!=0 {
 		go processbatch(jobs,i)
+		i = 0
 //		go argusBackend(jobs,i)
 		}
 	}
