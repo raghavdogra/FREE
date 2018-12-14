@@ -74,7 +74,12 @@ func mainloop() {
 	first:= [8]job{}
 	first[0] = <-c
 	start := time.Now()
-	first[1] = <-c
+	tick := time.Tick(time.Duration(t) * time.Millisecond)
+	select {
+        	case    first[1] = <-c:
+        	case <- tick:
+        }
+
 	latest := time.Now()
 	avgRI := int(latest.Sub(start))/1000000
 	avgRI = max(avgRI,1)
@@ -83,14 +88,38 @@ func mainloop() {
 	go processbatch(first,2)
 	i:=0
 	for  {
-		tick := time.Tick(time.Duration(t) * time.Millisecond)
 		jobs:= [8]job{}
 		bs := t/int(avgRI)
 		bs = max(1,bs)
 		bs = min(n,bs)
 		log.Println("desired current batch size = ",bs)
 		log.Println("current avgRI = ",avgRI)
-                for i=0;i<bs;i++{
+		jobs[0] = <-c
+                avgRI = (7 * avgRI + 3 * (int(time.Since(latest))/1000000))/10
+                avgRI = max(avgRI,1)
+                latest = time.Now()
+		latency := 40
+                        switch  bs {
+                        case 1 :
+                                latency = 27
+                        case 2 :
+                                latency = 36
+                        case 3 :
+                                latency = 44
+                        case 4 :
+                                latency = 53
+                        case 5 :
+                                latency = 62
+                        case 6 :
+                                latency = 70
+                        case 7 :
+                                latency = 81
+                        case 8 :
+                                latency = 91
+                        }
+
+		tick := time.Tick(time.Duration(latency) * time.Millisecond)
+                for i=1;i<bs;i++{
 			select {
 			case	jobs[i] = <-c:
 				avgRI = (7 * avgRI + 3 * (int(time.Since(latest))/1000000))/10
