@@ -71,13 +71,31 @@ func mainloop() {
 	j:=0
 	c= make(chan job)
         //var jobs [n]job
+	first:= [8]job{}
+	first[0] = <-c
+	start := time.Now()
+	first[1] = <-c
+	latest := time.Now()
+	avgRI := int(latest.Sub(start))/1000000
+	avgRI = max(avgRI,1)
+	log.Println("first sample =")
+	log.Println(avgRI)
+	go processbatch(first,2)
 	i:=0
 	for  {
 		tick := time.Tick(time.Duration(t) * time.Millisecond)
 		jobs:= [8]job{}
-                for i=0;i<n;i++{
+		bs := t/int(avgRI)
+		bs = max(1,bs)
+		bs = min(n,bs)
+		log.Println("desired current batch size = ",bs)
+		log.Println("current avgRI = ",avgRI)
+                for i=0;i<bs;i++{
 			select {
 			case	jobs[i] = <-c:
+				avgRI = (7 * avgRI + 3 * (int(time.Since(latest))/1000000))/10
+				avgRI = max(avgRI,1)
+				latest = time.Now()
 				j = j+1
 				log.Println(j)
 				continue
@@ -96,8 +114,20 @@ func mainloop() {
 		}
 	}
 }
+func min(a, b int) int {
+    if a <= b {
+        return a
+    }
+    return b
+}
+func max(a, b int) int {
+    if a >= b {
+        return a
+    }
+    return b
+}
 func stage2(j job, count int){
-	log.Println(time.Duration(count)*time.Millisecond)
+//	log.Println(time.Duration(count)*time.Millisecond)
 	time.Sleep(time.Duration(count)*time.Millisecond)
 	j.ch <-"Rat"
 }
@@ -137,7 +167,7 @@ func dummygpu() {
 				throughput = 73
 				latency = 91
 			}
-			log.Println(time.Duration(throughput)*time.Millisecond)
+		//	log.Println(time.Duration(throughput)*time.Millisecond)
 			time.Sleep((time.Duration(throughput) * time.Millisecond))
 			go stage2(currjob, latency-throughput)
 	}
@@ -184,9 +214,9 @@ func processbatch(jobs [8]job, count int ) {
 	res_chan := make (chan string)
 	log.Print("sending to gpu and count is ", count)
 	gpu_channel <- job{res_chan,buf1,count}
-	log.Print("waiting to recieve from res_chan")
+//	log.Print("waiting to recieve from res_chan")
 	cstr := <-res_chan
-	log.Print("recieved from res_chan")
+//	log.Print("recieved from res_chan")
 	i:=0
         for i=0;i<count;i++ {
 		jobs[i].ch <- cstr
