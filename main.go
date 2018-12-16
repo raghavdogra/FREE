@@ -64,10 +64,12 @@ func mainloop() {
 	if err!=nil {
 		log.Print("error")
 	}
-        t,er1:=strconv.Atoi(os.Args[2]) //the app will take the first arguement as the batch size
+        t,er1:=strconv.ParseFloat(os.Args[2],64) //the app will take the first arguement as the batch size
 	if er1!=nil {
 		log.Print("error")
 	}
+	t = t * 1000
+	log.Println(time.Duration(t) * time.Microsecond)
 	j:=0
 	c= make(chan job)
         //var jobs [n]job
@@ -76,11 +78,10 @@ func mainloop() {
 		jobs:= [8]job{}
 		jobs[0] = <-c
                 for i=1;i<n;i++{
-			tick := time.After(time.Duration(t) * time.Millisecond)
+			tick := time.After(time.Duration(t) * time.Microsecond)
 			select {
 			case	jobs[i] = <-c:
 				j = j+1
-				log.Println("what the fuck!")
 				log.Println(time.Now())		
 				continue
 			case <- tick:
