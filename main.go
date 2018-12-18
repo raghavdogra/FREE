@@ -84,7 +84,6 @@ func mainloop() {
 	avgRI := int(latest.Sub(start))/1000000
 	avgRI = max(avgRI,1)
 	log.Println("first sample =")
-	log.Println(avgRI)
 	go processbatch(first,2)
 	i:=0
 	for  {
@@ -92,8 +91,8 @@ func mainloop() {
 		bs := t/int(avgRI)
 		bs = max(1,bs)
 		bs = min(n,bs)
-		log.Println("desired current batch size = ",bs)
-		log.Println("current avgRI = ",avgRI)
+	//	log.Println("desired current batch size = ",bs)
+	//	log.Println("current avgRI = ",avgRI)
 		jobs[0] = <-c
                 avgRI = (7 * avgRI + 3 * (int(time.Since(latest))/1000000))/10
                 avgRI = max(avgRI,1)
@@ -126,7 +125,7 @@ func mainloop() {
 				avgRI = max(avgRI,1)
 				latest = time.Now()
 				j = j+1
-				log.Println(j)
+		//		log.Println(j)
 				continue
 			case <- tick:
 				if i==0 {
@@ -169,7 +168,7 @@ func dummygpu() {
 			job_num = job_num + 1
 			var latency int
 			var throughput int
-			log.Print("gpu request# ",job_num, "bSize: ",currjob.batchsize)
+		//	log.Print("gpu request# ",job_num, "bSize: ",currjob.batchsize)
 			switch  currjob.batchsize {
 			case 1 :
 				throughput = 18
@@ -241,7 +240,8 @@ func argusBackend(jobs [8]job, count int) {
 func processbatch(jobs [8]job, count int ) {
 	buf1 := jobs[0].buf
 	res_chan := make (chan string)
-	log.Print("sending to gpu and count is ", count)
+//	log.Print("sending to gpu and count is ", count)
+//	log.Println(avgRI)
 	gpu_channel <- job{res_chan,buf1,count}
 //	log.Print("waiting to recieve from res_chan")
 	cstr := <-res_chan
@@ -279,7 +279,7 @@ func modclass1(w http.ResponseWriter, r *http.Request) {
                http.Error(w, err.Error(), http.StatusBadRequest)
 		return 
 	}
-	log.Print(len(buf.Bytes()))
+	//log.Print(len(buf.Bytes()))
 	//newImage := resize.Resize(160, 0, original_image, resize.Lanczos3)
 	//log.Print(buff)*/
 	pixels := make([]pixel, 224*224)
