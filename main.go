@@ -97,7 +97,7 @@ func mainloop() {
                 avgRI = (7 * avgRI + 3 * (int(time.Since(latest))/1000000))/10
                 avgRI = max(avgRI,1)
                 latest = time.Now()
-		latency := 40
+/*		latency := 40
                         switch  bs {
                         case 1 :
                                 latency = 27
@@ -116,8 +116,8 @@ func mainloop() {
                         case 8 :
                                 latency = 91
                         }
-
-		tick := time.Tick(time.Duration(latency) * time.Millisecond)
+*/
+		tick := time.Tick(time.Duration(t) * time.Millisecond)
                 for i=1;i<bs;i++{
 			select {
 			case	jobs[i] = <-c:
