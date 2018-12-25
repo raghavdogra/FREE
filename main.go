@@ -1,6 +1,4 @@
 package main
-// #cgo pkg-config: opencv
-// #cgo CXXFLAGS: -std=c++11 -Icaffe/include -I/usr/include/opencv -I.. -O2 -fomit-frame-pointer -Wall
 // #include <stdlib.h>
 // #include <zmq.h>
 // #include "classification.hpp"
@@ -23,8 +21,6 @@ import (
 	zmq "github.com/pebbe/zmq4"
 )
 var n uint32
-var cstr *C.char
-var ctx *C.classifier_ctx
 /*
 type SafeCounter struct {
 	requestCount uint32
@@ -71,7 +67,7 @@ func mainloop() {
 	j:=0
 	c= make(chan job)
         //var jobs [n]job
-	first:= [8]job{}
+	first:= [9]job{}
 	first[0] = <-c
 	start := time.Now()
 	tick := time.Tick(time.Duration(t) * time.Millisecond)
@@ -84,10 +80,10 @@ func mainloop() {
 	avgRI := int(latest.Sub(start))/1000000
 	avgRI = max(avgRI,1)
 	log.Println("first sample =")
-	go processbatch(first,2)
+	go argusBackend(first,2)
 	i:=0
 	for  {
-		jobs:= [8]job{}
+		jobs:= [9]job{}
 		bs := t/int(avgRI)
 		bs = max(1,bs)
 		bs = min(n,bs)
@@ -137,8 +133,8 @@ func mainloop() {
 			break
 		}
 		if i!=0 {
-		go processbatch(jobs,i)
-//		go argusBackend(jobs,i)
+//		go processbatch(jobs,i)
+		go argusBackend(jobs,i)
 		}
 	}
 }
@@ -171,29 +167,32 @@ func dummygpu() {
 		//	log.Print("gpu request# ",job_num, "bSize: ",currjob.batchsize)
 			switch  currjob.batchsize {
 			case 1 :
-				throughput = 18
-				latency = 27
+				throughput = 10
+				latency = 32
 			case 2 :
-				throughput = 26
-				latency = 36
+				throughput = 11
+				latency = 34
 			case 3 :
-				throughput = 32
-				latency = 44
+				throughput = 12
+				latency = 37
 			case 4 :
-				throughput = 40
-				latency = 53
+				throughput = 13
+				latency = 42
 			case 5 :
-				throughput = 48
-				latency = 62
+				throughput = 14
+				latency = 43
 			case 6 :
-				throughput = 55
-				latency = 70
+				throughput = 15
+				latency = 45
 			case 7 :
-				throughput = 64
-				latency = 81
+				throughput = 17
+				latency = 48
 			case 8 :
-				throughput = 73
-				latency = 91
+				throughput = 18
+				latency = 52
+			case 9 :
+				throughput = 20
+				latency = 53
 			}
 		//	log.Println(time.Duration(throughput)*time.Millisecond)
 			time.Sleep((time.Duration(throughput) * time.Millisecond))
@@ -201,7 +200,7 @@ func dummygpu() {
 	}
 }
 
-func argusBackend(jobs [8]job, count int) {
+func argusBackend(jobs [9]job, count int) {
 	context, _ := zmq.NewContext()
 	//defer context.Close()
 	zsock, _ := context.NewSocket(zmq.DEALER)
@@ -231,13 +230,12 @@ func argusBackend(jobs [8]job, count int) {
 	if err != nil {
 		log.Println("binary.Read failed:", err)
 	}
-	log.Println(fres[0])
 		jobs[i].ch <- string(len(fres))
 		//log.Println(msg[i])
 	}
 }
 
-func processbatch(jobs [8]job, count int ) {
+func processbatch(jobs [9]job, count int ) {
 	buf1 := jobs[0].buf
 	res_chan := make (chan string)
 //	log.Print("sending to gpu and count is ", count)
@@ -303,7 +301,7 @@ func modclass1(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	srv := http.Server{
-		Addr:    ":8002",
+		Addr:    ":8001",
 		ReadTimeout: 100 * time.Second,
 		WriteTimeout: 100 * time.Second,
 		Handler: &myHandler{},
@@ -316,7 +314,6 @@ func main() {
 	n = 1
 	go mainloop()//starts the main loop which receives the requests and batches them 
 	go dummygpu()//concurrent dummy gpu running
-	defer C.classifier_destroy(ctx)
 	log.Println("Adding REST endpoint /api/classify")
 	log.Println("Starting server listening on :8002 with SIM backend")
 	log.Fatal(srv.ListenAndServe())
