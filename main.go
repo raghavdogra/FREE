@@ -87,8 +87,8 @@ func mainloop() {
 			break
 		}
 		if i!=0 {
-		go processbatch(jobs,i)
-//		go argusBackend(jobs,i)
+//		go processbatch(jobs,i)
+		go argusBackend(jobs,i)
 		}
 	}
 }
