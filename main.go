@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"time"
+	"sync"
         "io"
        // "io/ioutil"
 	"log"
@@ -54,6 +55,23 @@ type job struct {
 	buf []byte  
 	batchsize int
 }
+var totalRequests uint64
+var totalBatches uint64
+var mut sync.Mutex
+func reportAvgBatchSize() {
+	ticker := time.NewTicker(60*time.Second)
+	for true {
+		select {
+			case <-ticker.C:
+			mut.Lock()
+			log.Println("Total Reqs: ",totalRequests,"Total Batches: ",totalBatches,"Avergae batch size: ",(float64(totalRequests)/float64(totalBatches)))
+			totalRequests = 0
+			totalBatches = 0
+			mut.Unlock()
+		}
+	}
+}
+
 var c chan job	//c is the channel from which mainloop receives forever.i
 var gpu_channel chan job
 func mainloop() {
@@ -84,7 +102,10 @@ func mainloop() {
 	avgRI := int(latest.Sub(start))/1000000
 	avgRI = max(avgRI,1)
 	log.Println("first sample =")
+	totalRequests = 0
+	totalBatches = 0
 	go argusBackend(first,i)
+	go reportAvgBatchSize()
 	i = 0
 	for  {
 		jobs:= [9]job{}
@@ -139,6 +160,10 @@ func mainloop() {
 		if i!=0 {
 //		go processbatch(jobs,i)
 		go argusBackend(jobs,i)
+		mut.Lock()
+		totalBatches++
+		totalRequests = totalRequests + uint64(i)
+		mut.Unlock()
 		}
 	}
 }
