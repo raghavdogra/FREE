@@ -1,6 +1,4 @@
 package main
-// #cgo pkg-config: opencv
-// #cgo CXXFLAGS: -std=c++11 -Icaffe/include -I/usr/include/opencv -I.. -O2 -fomit-frame-pointer -Wall
 // #include <stdlib.h>
 // #include <zmq.h>
 // #include "classification.hpp"
@@ -23,8 +21,6 @@ import (
 	zmq "github.com/pebbe/zmq4"
 )
 var n uint32
-var cstr *C.char
-var ctx *C.classifier_ctx
 /*
 type SafeCounter struct {
 	requestCount uint32
@@ -260,7 +256,6 @@ func main() {
 	n = 1
 	go mainloop()//starts the main loop which receives the requests and batches them 
 	go dummygpu()//concurrent dummy gpu running
-	defer C.classifier_destroy(ctx)
 	log.Println("Adding REST endpoint /api/classify")
 	log.Println("Starting server listening on :8002 with SIM backend")
 	log.Fatal(srv.ListenAndServe())
