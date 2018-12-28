@@ -74,7 +74,7 @@ func mainloop() {
 	i:=0
 	for  {
 		tick := time.Tick(time.Duration(t) * time.Millisecond)
-		jobs:= [8]job{}
+		jobs:= [9]job{}
                 for i=0;i<n;i++{
 			select {
 			case	jobs[i] = <-c:
@@ -113,29 +113,32 @@ func dummygpu() {
 			log.Print("gpu request# ",job_num, "bSize: ",currjob.batchsize)
 			switch  currjob.batchsize {
 			case 1 :
-				throughput = 18
-				latency = 27
+				throughput = 10
+				latency = 32
 			case 2 :
-				throughput = 26
-				latency = 36
+				throughput = 11
+				latency = 34
 			case 3 :
-				throughput = 32
-				latency = 44
+				throughput = 12
+				latency = 37
 			case 4 :
-				throughput = 40
-				latency = 53
+				throughput = 13
+				latency = 42
 			case 5 :
-				throughput = 48
-				latency = 62
+				throughput = 14
+				latency = 43
 			case 6 :
-				throughput = 55
-				latency = 70
+				throughput = 15
+				latency = 45
 			case 7 :
-				throughput = 64
-				latency = 81
+				throughput = 17
+				latency = 48
 			case 8 :
-				throughput = 73
-				latency = 91
+				throughput = 18
+				latency = 52
+			case 9 :
+				throughput = 20
+				latency = 53
 			}
 			log.Println(time.Duration(throughput)*time.Millisecond)
 			time.Sleep((time.Duration(throughput) * time.Millisecond))
@@ -143,7 +146,7 @@ func dummygpu() {
 	}
 }
 
-func argusBackend(jobs [8]job, count int) {
+func argusBackend(jobs [9]job, count int) {
 	context, _ := zmq.NewContext()
 	//defer context.Close()
 	zsock, _ := context.NewSocket(zmq.DEALER)
@@ -179,7 +182,7 @@ func argusBackend(jobs [8]job, count int) {
 	}
 }
 
-func processbatch(jobs [8]job, count int ) {
+func processbatch(jobs [9]job, count int ) {
 	buf1 := jobs[0].buf
 	res_chan := make (chan string)
 	log.Print("sending to gpu and count is ", count)
