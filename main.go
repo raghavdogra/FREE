@@ -20,6 +20,7 @@ import (
 	"image/jpeg"
 	zmq "github.com/pebbe/zmq4"
 )
+var tc int
 var n uint32
 /*
 type SafeCounter struct {
@@ -194,53 +195,53 @@ func processbatch(jobs [9]job, count int ) {
 }
 
 func modclass1(w http.ResponseWriter, r *http.Request) {
-/*        buffer, err := ioutil.ReadAll(r.Body)
+/*        buffer, err := ioubtil.ReadAll(r.Body)
         if err != nil {
                 http.Error(w, err.Error(), http.StatusBadRequest)
         return
         }
-	log.Print(len(buffer))*/
-	im, err := jpeg.Decode(r.Body)
-        if err != nil {
-		log.Print("Decode Failed, returning")
-               http.Error(w, err.Error(), http.StatusBadRequest)
-      		return
-        }
-//	bounds := im.Bounds()
-	
-//	log.Print(bounds)
-/*
-//	log.Print(len(string(im)))
-//	m0 := image.NewRGBA(image.Rect(0, 0, 224, 224))
-	imag := im.SubImage(image.Rect(0, 0, 224, 224)).(*image.RGBA)
-	var buf bytes.Buffer
-	err = jpeg.Encode(&buf, im, nil)
-	if err != nil {
-		log.Print("Encode Failed, returning")
-               http.Error(w, err.Error(), http.StatusBadRequest)
-		return 
-	}
-	log.Print(len(buf.Bytes()))
-	//newImage := resize.Resize(160, 0, original_image, resize.Lanczos3)
-	//log.Print(buff)*/
-	pixels := make([]pixel, 224*224)
-	pbuffer := make([]byte, 224*224*3*4)
-	for i:=0; i < 224*224; i++ {
-		x := i%224;
-		y := i/224;
-		r,g,b,_ := im.At(x,y).RGBA()
-		pixels[i].r = r
-		pixels[i].g = g
-		pixels[i].b = b	
-		*(&pbuffer[i*12 + 4]) = byte(g)
-		*(&pbuffer[i*12]) = byte(r)
-		*(&pbuffer[i*12 + 8]) = byte(b)
-	}
-	ch := make(chan string) //creates it's own channel from which it will expect to receive value back from GPU!
-	c<-job{ch,pbuffer,0} //sends the job structure to c
-	gostr := <-ch	//waits to receive from channel which it passed on that it'll receive from that!
-	io.WriteString(w, gostr )
+        log.Print(len(buffer))*/
+        tc++
+        log.Print(tc)
+        sema <- tc
+        preprocess(w,r)
 }
+
+var sema = make (chan int, 100)
+
+func preprocess(w http.ResponseWriter, r *http.Request) {
+        im, err := jpeg.Decode(r.Body)
+//      log.Print("preprocess")
+        if err != nil {
+                log.Print("Decode Failed, returning")
+               http.Error(w, err.Error(), http.StatusBadRequest)
+                return
+        }
+        pixels := make([]pixel, 224*224)
+        pbuffer := make([]byte, 224*224*3*4)
+        for i:=0; i < 224*224; i++ {
+                x := i%224;
+                y := i/224;
+                r,g,b,_ := im.At(x,y).RGBA()
+                pixels[i].r = r
+                pixels[i].g = g
+                pixels[i].b = b 
+                *(&pbuffer[i*12 + 4]) = byte(g)
+                *(&pbuffer[i*12]) = byte(r)
+                *(&pbuffer[i*12 + 8]) = byte(b)
+        }
+        ch := make(chan string) //creates it's own channel from which it will expect to receive value back from GPU!
+        c<-job{ch,pbuffer,0} //sends the job structure to c
+        gostr := <-ch   //waits to receive from channel which it passed on that it'll receive from that!
+        io.WriteString(w, gostr )
+        //log.Print("done preprocess")
+        
+        tc--
+        log.Print(tc)
+        <-sema
+}
+
+
 
 func main() {
 	srv := http.Server{
