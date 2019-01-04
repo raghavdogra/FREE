@@ -83,38 +83,58 @@ func mainloop() {
 	if er1!=nil {
 		log.Print("error")
 	}
-	j:=0
-	c= make(chan job)
+	c= make(chan job,100)
         //var jobs [n]job
 	totalRequests = 0
 	totalBatches = 0
 	go reportAvgBatchSize()
 	i:=0
+	tick := time.Tick(10 * time.Minute)
+	var jobs []job
 	for  {
-		tick := time.Tick(time.Duration(t) * time.Millisecond)
-		jobs:= [9]job{}
-                for i=0;i<n;i++{
+		if len(jobs) == 0 {
+			log.Print("len job= 0")
+			currjob :=  <-c
+			jobs=append(jobs,currjob)
+			tick = time.Tick(time.Duration(t) * time.Millisecond)
+		} else {
 			select {
-			case	jobs[i] = <-c:
-				j = j+1
-				continue
-			case <- tick:
-				if i==0 {
-//				log.Println("tick exploded")
-				i = -1
-				continue
-				}
+			case currjob:= <- c:
+				jobs = append(jobs,currjob)
+				log.Print("blocking receive")
+			case <-tick:
+				log.Print("tick explosion")
+				go argusBackend(jobs,len(jobs))
+				jobs = jobs[0:0]
 			}
-			break
 		}
-		if i!=0 {
-//		go processbatch(jobs,i)
-		go argusBackend(jobs,i)
-		mut.Lock()
-		totalBatches++
-		totalRequests = totalRequests + uint64(i)
-		mut.Unlock()
+		if len(jobs) == 0 {
+			log.Print("continue len == 0")
+			continue
 		}
+		for i=len(jobs);i<n;i++ {
+			//print(i)
+			select {
+			case first:= <- c:
+				jobs = append(jobs,first)
+				log.Print("added non-blockingly")
+				log.Print(i)
+			default:
+				i = n+1
+			}
+			if len(jobs) == 5 {
+				tick = time.Tick(time.Duration(t) * time.Millisecond)
+			}
+		}
+		
+		log.Print("job len after for",len(jobs))
+		if len(jobs)==n {
+			go argusBackend(jobs,n)
+			jobs = jobs[0:0]
+		} else if len(jobs) >= 4 {
+			go argusBackend(jobs[0:4],4)
+			jobs = jobs[4:]
+		} 
 	}
 }
 func stage2(j job, count int){
@@ -164,7 +184,7 @@ func dummygpu() {
 	}
 }
 
-func argusBackend(jobs [9]job, count int) {
+func argusBackend(jobs []job, count int) {
 	context, _ := zmq.NewContext()
 	//defer context.Close()
 	zsock, _ := context.NewSocket(zmq.DEALER)
