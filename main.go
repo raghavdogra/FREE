@@ -93,7 +93,7 @@ func mainloop() {
 	var jobs []job
 	for  {
 		if len(jobs) == 0 {
-			log.Print("len job= 0")
+		//	log.Print("len job= 0")
 			currjob :=  <-c
 			jobs=append(jobs,currjob)
 			tick = time.Tick(time.Duration(t) * time.Millisecond)
@@ -101,39 +101,48 @@ func mainloop() {
 			select {
 			case currjob:= <- c:
 				jobs = append(jobs,currjob)
-				log.Print("blocking receive")
+		//		log.Print("blocking receive")
 			case <-tick:
-				log.Print("tick explosion")
+		//		log.Print("tick explosion")
+		//		cpyjob := make([]job,len(jobs))
+		//		copy(cpyjob,jobs)
 				go argusBackend(jobs,len(jobs))
-				jobs = jobs[0:0]
+				jobs = make ([]job,0,0)
 			}
 		}
 		if len(jobs) == 0 {
-			log.Print("continue len == 0")
+		//	log.Print("continue len == 0")
 			continue
 		}
+	//	boole := false
 		for i=len(jobs);i<n;i++ {
-			//print(i)
+		//	print(i)
 			select {
 			case first:= <- c:
 				jobs = append(jobs,first)
 				log.Print("added non-blockingly")
-				log.Print(i)
+		//		log.Print(i)
 			default:
-				i = n+1
+				break
+	//			boole = true
 			}
+		//	if boole {
+		//		break
+		//	}
 			if len(jobs) == 5 {
 				tick = time.Tick(time.Duration(t) * time.Millisecond)
 			}
 		}
 		
-		log.Print("job len after for",len(jobs))
+	//	log.Print("job len after for",len(jobs))
 		if len(jobs)==n {
 			go argusBackend(jobs,n)
-			jobs = jobs[0:0]
+			jobs = make([]job,0,0)
 		} else if len(jobs) >= 4 {
 			go argusBackend(jobs[0:4],4)
-			jobs = jobs[4:]
+			cpyjob := make([]job,len(jobs)-4)
+			copy(cpyjob,jobs[4:])
+			jobs = cpyjob
 		} 
 	}
 }
@@ -185,6 +194,7 @@ func dummygpu() {
 }
 
 func argusBackend(jobs []job, count int) {
+	log.Print(count)
 	context, _ := zmq.NewContext()
 	//defer context.Close()
 	zsock, _ := context.NewSocket(zmq.DEALER)
@@ -245,7 +255,7 @@ func modclass1(w http.ResponseWriter, r *http.Request) {
         preprocess(w,r)
 }
 
-var sema = make (chan int, 100)
+var sema = make (chan int, 1000)
 
 func preprocess(w http.ResponseWriter, r *http.Request) {
         im, err := jpeg.Decode(r.Body)
