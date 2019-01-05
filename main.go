@@ -74,6 +74,56 @@ func reportAvgBatchSize() {
 
 var c chan job	//c is the channel from which mainloop receives forever.i
 var gpu_channel chan job
+
+func getDesiredBatchSizeP100(avgRI int) int{
+	reqRate := float64(1000.0/float64(avgRI))
+	bs := 1
+	if reqRate<95 {
+		bs = 1
+	} else if reqRate < 180 {
+		bs = 2
+	} else if reqRate < 250 {
+		bs = 3
+	} else if reqRate < 300 {
+		bs = 4
+	} else if reqRate < 330 {
+		bs = 5
+	} else if reqRate < 380 {
+		bs = 6
+	} else if reqRate < 400 {
+		bs = 7
+	} else if reqRate < 410 {
+		bs = 8
+	} else {
+		bs = 9
+	}
+	return bs
+}
+
+func getDesiredBatchSizeK40(avgRI int) int{
+	reqRate := float64(1000.0/float64(avgRI))
+	bs := 1
+	if reqRate<50 {
+		bs = 1
+	} else if reqRate < 70 {
+		bs = 2
+	} else if reqRate < 85 {
+		bs = 3
+	} else if reqRate < 90 {
+		bs = 4
+	} else if reqRate < 95 {
+		bs = 5
+	} else if reqRate < 100 {
+		bs = 6
+	} else if reqRate < 105 {
+		bs = 7
+	} else {
+		bs = 8
+	}
+	return bs
+}
+
+
 func mainloop() {
         n,err:=strconv.Atoi(os.Args[1]) //the app will take the first arguement as the batch size
 	if err!=nil {
@@ -83,6 +133,7 @@ func mainloop() {
 	if er1!=nil {
 		log.Print("error")
 	}
+		log.Print(n)
 	j:=0
 	c= make(chan job)
         //var jobs [n]job
@@ -109,13 +160,11 @@ func mainloop() {
 	i = 0
 	for  {
 		jobs:= [9]job{}
-		bs := t/int(avgRI)
-		bs = max(1,bs)
-		bs = min(n,bs)
-	//	log.Println("desired current batch size = ",bs)
-	//	log.Println("current avgRI = ",avgRI)
+		bs:= getDesiredBatchSizeK40(int(avgRI))
+		log.Println("desired current batch size = ",bs)
+		log.Println("current avgRI = ",avgRI)
 		jobs[0] = <-c
-                avgRI = (7 * avgRI + 3 * (int(time.Since(latest))/1000000))/10
+                avgRI = (9 * avgRI + 1 * (int(time.Since(latest))/1000000))/10
                 avgRI = max(avgRI,1)
                 latest = time.Now()
 /*		latency := 40
@@ -359,7 +408,7 @@ func preprocess(w http.ResponseWriter, r *http.Request) {
 	//log.Print("done preprocess")
 	
 	tc--
-	log.Print(tc)
+//	log.Print(tc)
 	<-sema
 }
 
@@ -372,7 +421,7 @@ func modclass1(w http.ResponseWriter, r *http.Request) {
         }
 	log.Print(len(buffer))*/
 	tc++
-	log.Print(tc)
+//	log.Print(tc)
 	sema <- tc
 	preprocess(w,r)
 }
