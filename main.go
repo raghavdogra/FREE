@@ -74,6 +74,56 @@ func reportAvgBatchSize() {
 
 var c chan job	//c is the channel from which mainloop receives forever.i
 var gpu_channel chan job
+
+func getDesiredBatchSizeP100(avgRI int) int{
+	reqRate := float64(1000.0/float64(avgRI))
+	bs := 1
+	if reqRate<95 {
+		bs = 1
+	} else if reqRate < 180 {
+		bs = 2
+	} else if reqRate < 250 {
+		bs = 3
+	} else if reqRate < 300 {
+		bs = 4
+	} else if reqRate < 330 {
+		bs = 5
+	} else if reqRate < 380 {
+		bs = 6
+	} else if reqRate < 400 {
+		bs = 7
+	} else if reqRate < 410 {
+		bs = 8
+	} else {
+		bs = 9
+	}
+	return bs
+}
+
+func getDesiredBatchSizeK40(avgRI int) int{
+	reqRate := float64(1000.0/float64(avgRI))
+	bs := 1
+	if reqRate<50 {
+		bs = 1
+	} else if reqRate < 70 {
+		bs = 2
+	} else if reqRate < 85 {
+		bs = 3
+	} else if reqRate < 90 {
+		bs = 4
+	} else if reqRate < 95 {
+		bs = 5
+	} else if reqRate < 100 {
+		bs = 6
+	} else if reqRate < 105 {
+		bs = 7
+	} else {
+		bs = 8
+	}
+	return bs
+}
+
+
 func mainloop() {
         n,err:=strconv.Atoi(os.Args[1]) //the app will take the first arguement as the batch size
 	if err!=nil {
@@ -83,6 +133,7 @@ func mainloop() {
 	if er1!=nil {
 		log.Print("error")
 	}
+		log.Print(n)
 	j:=0
 	c= make(chan job)
         //var jobs [n]job
@@ -104,18 +155,16 @@ func mainloop() {
 	log.Println("first sample =")
 	totalRequests = 0
 	totalBatches = 0
-	go argusBackend(first,i)
-	go reportAvgBatchSize()
+	go processbatch(first,i)
+//	go reportAvgBatchSize()
 	i = 0
 	for  {
 		jobs:= [9]job{}
-		bs := t/int(avgRI)
-		bs = max(1,bs)
-		bs = min(n,bs)
-	//	log.Println("desired current batch size = ",bs)
-	//	log.Println("current avgRI = ",avgRI)
+		bs:= getDesiredBatchSizeP100(int(avgRI))
+		//log.Println("desired current batch size = ",bs)
+		//log.Println("current avgRI = ",avgRI)
 		jobs[0] = <-c
-                avgRI = (7 * avgRI + 3 * (int(time.Since(latest))/1000000))/10
+                avgRI = (9 * avgRI + 1 * (int(time.Since(latest))/1000000))/10
                 avgRI = max(avgRI,1)
                 latest = time.Now()
 /*		latency := 40
@@ -142,7 +191,7 @@ func mainloop() {
                 for i=1;i<bs;i++{
 			select {
 			case	jobs[i] = <-c:
-				avgRI = (7 * avgRI + 3 * (int(time.Since(latest))/1000000))/10
+				avgRI = (9 * avgRI + 1 * (int(time.Since(latest))/1000000))/10
 				avgRI = max(avgRI,1)
 				latest = time.Now()
 				j = j+1
@@ -158,8 +207,8 @@ func mainloop() {
 			break
 		}
 		if i!=0 {
-//		go processbatch(jobs,i)
-		go argusBackend(jobs,i)
+		go processbatch(jobs,i)
+//		go argusBackend(jobs,i)
 		mut.Lock()
 		totalBatches++
 		totalRequests = totalRequests + uint64(i)
@@ -197,31 +246,31 @@ func dummygpu() {
 			switch  currjob.batchsize {
 			case 1 :
 				throughput = 10
-				latency = 32
+				latency = 21
 			case 2 :
 				throughput = 11
-				latency = 34
+				latency = 25
 			case 3 :
 				throughput = 12
-				latency = 37
+				latency = 26
 			case 4 :
 				throughput = 13
-				latency = 42
+				latency = 29
 			case 5 :
 				throughput = 14
-				latency = 43
+				latency = 33
 			case 6 :
-				throughput = 15
-				latency = 45
+				throughput = 36
+				latency = 33
 			case 7 :
 				throughput = 17
-				latency = 48
+				latency = 36
 			case 8 :
 				throughput = 18
-				latency = 52
+				latency = 38
 			case 9 :
 				throughput = 20
-				latency = 53
+				latency = 41
 			}
 		//	log.Println(time.Duration(throughput)*time.Millisecond)
 			time.Sleep((time.Duration(throughput) * time.Millisecond))
@@ -359,7 +408,7 @@ func preprocess(w http.ResponseWriter, r *http.Request) {
 	//log.Print("done preprocess")
 	
 	tc--
-	log.Print(tc)
+//	log.Print(tc)
 	<-sema
 }
 
@@ -372,7 +421,7 @@ func modclass1(w http.ResponseWriter, r *http.Request) {
         }
 	log.Print(len(buffer))*/
 	tc++
-	log.Print(tc)
+//	log.Print(tc)
 	sema <- tc
 	preprocess(w,r)
 }
@@ -393,7 +442,7 @@ func main() {
 	tc = 0
 	go mainloop()//starts the main loop which receives the requests and batches them
 //	go frontToBack() 
-//	go dummygpu()//concurrent dummy gpu running
+	go dummygpu()//concurrent dummy gpu running
 	log.Println("Adding REST endpoint /api/classify")
 	log.Println("Starting server listening on :8002 with SIM backend")
 	log.Fatal(srv.ListenAndServe())
