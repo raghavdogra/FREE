@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"time"
+	"sync"
         "io"
        // "io/ioutil"
 	"log"
@@ -54,6 +55,23 @@ type job struct {
 	buf []byte  
 	batchsize int
 }
+var totalRequests uint64
+var totalBatches uint64
+var mut sync.Mutex
+func reportAvgBatchSize() {
+	ticker := time.NewTicker(60*time.Second)
+	for true {
+		select {
+			case <-ticker.C:
+			mut.Lock()
+			log.Println("Total Reqs: ",totalRequests,"Total Batches: ",totalBatches,"Avergae batch size: ",(float64(totalRequests)/float64(totalBatches)))
+			totalRequests = 0
+			totalBatches = 0
+			mut.Unlock()
+		}
+	}
+}
+
 var c chan job	//c is the channel from which mainloop receives forever.i
 var gpu_channel chan job
 func mainloop() {
@@ -66,10 +84,12 @@ func mainloop() {
 		log.Print("error")
 	}
 	t = t * 1000
-	log.Println(time.Duration(t) * time.Microsecond)
 	j:=0
 	c= make(chan job)
         //var jobs [n]job
+	totalBatches = 0
+	totalRequests = 0
+	go reportAvgBatchSize()
 	i:=0
 	for  {
 		jobs:= [9]job{}
@@ -79,23 +99,24 @@ func mainloop() {
 			select {
 			case	jobs[i] = <-c:
 				j = j+1
-				log.Println(time.Now())		
 				continue
 			case <- tick:
-				log.Println("Tick!")		
-				log.Println(time.Now())		
 			}
 			break
 		}
 		if i!=0 {
 //		go processbatch(jobs,i)
 		go argusBackend(jobs,i)
+               mut.Lock()
+               totalBatches++
+               totalRequests = totalRequests + uint64(i)
+               mut.Unlock()
+
 		i = 0
 		}
 	}
 }
 func stage2(j job, count int){
-	log.Println(time.Duration(count)*time.Millisecond)
 	time.Sleep(time.Duration(count)*time.Millisecond)
 	j.ch <-"Rat"
 }
@@ -138,7 +159,6 @@ func dummygpu() {
 				throughput = 20
 				latency = 53
 			}
-			log.Println(time.Duration(throughput)*time.Millisecond)
 			time.Sleep((time.Duration(throughput) * time.Millisecond))
 			go stage2(currjob, latency-throughput)
 	}
@@ -174,7 +194,6 @@ func argusBackend(jobs [9]job, count int) {
 	if err != nil {
 		log.Println("binary.Read failed:", err)
 	}
-	log.Println(fres[0])
 		jobs[i].ch <- string(len(fres))
 		//log.Println(msg[i])
 	}
@@ -202,7 +221,6 @@ func modclass1(w http.ResponseWriter, r *http.Request) {
         }
         log.Print(len(buffer))*/
         tc++
-        log.Print(tc)
         sema <- tc
         preprocess(w,r)
 }
@@ -237,7 +255,6 @@ func preprocess(w http.ResponseWriter, r *http.Request) {
         //log.Print("done preprocess")
         
         tc--
-        log.Print(tc)
         <-sema
 }
 
@@ -245,7 +262,7 @@ func preprocess(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	srv := http.Server{
-		Addr:    ":8002",
+		Addr:    ":8001",
 		ReadTimeout: 100 * time.Second,
 		WriteTimeout: 100 * time.Second,
 		Handler: &myHandler{},
